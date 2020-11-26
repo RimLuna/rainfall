@@ -71,3 +71,25 @@ level0@RainFall:~$ su level1
 Password:1fe8a524fa4bec01ca4ea2a869af2a02260d4a7d5fe7e7c24d8617e6dca12d3a
 ```
 ## level1
+```
+level1@RainFall:~$ file level1 
+level1: setuid setgid ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, BuildID[sha1]=0x099e580e4b9d2f1ea30ee82a22229942b231f2e0, not stripped
+```
+*yay, good mood today*
+
+Executable waits for input then when u enter input it fucking leaves, the fuck
+
+**binary ninja this bitch**
+```
+call    gets
+leave    {__saved_ebp}
+retn     {__return_addr}
+```
+*yup gets then ret, kill me*
+
+Buuuut there's a function run, that isn't called anywhere in the main, with a call to **system('/bin/sh')**
+```
+mov     dword [esp {var_1c}], data_8048584  {"/bin/sh"}
+call    system
+```
+### how the fuck do you jump to this stupid shit
