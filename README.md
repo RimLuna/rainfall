@@ -37,3 +37,37 @@ No RELRO        No canary found   NX enabled    No PIE          No RPATH   No RU
 ```
 *NX is enabled, meaning you can't use shellcode or put anything on the stack in order to execute it.*
 
+**binary ninja**
+```
+mov     dword [esp {var_30}], eax
+call    atoi
+cmp     eax, 0x1a7
+```
+*compares atoi(arg) to **0x1a7 which is 423**, I love me those compares*
+```
+level0@RainFall:~$ ./level0 423
+$ ls
+ls: cannot open directory .: Permission denied
+$ getflag
+/bin/sh: 2: getflag: not found
+$ /bin/getflag
+/bin/sh: 3: /bin/getflag: not found
+```
+*so it opend a shell using execv('/bin/sh'), but nothing special is happening when i execute anything*
+
+this shit calls **setresuid** and a bunch of weird looking functions before execv
+### I dont know the point of this project yeeeet, that's why I'm fucking executing getflag from the snowcrash shit
+Oh so I need to find a way to read a .pass file in the next user's home directoryy
+
+*ugh*
+
+```
+$ cat /home/user/level1/.pass
+1fe8a524fa4bec01ca4ea2a869af2a02260d4a7d5fe7e7c24d8617e6dca12d3a
+```
+**yayyyy**
+```
+level0@RainFall:~$ su level1
+Password:1fe8a524fa4bec01ca4ea2a869af2a02260d4a7d5fe7e7c24d8617e6dca12d3a
+```
+## level1
