@@ -1,5 +1,5 @@
 # rainfall
-Kill me, I'm getting kicked 
+Kill me, I'm getting kicked out, this is an intro to pwn I think
 ```
 level0@RainFall:~$ ./level0 
 Segmentation fault (core dumped)
