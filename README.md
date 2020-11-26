@@ -21,7 +21,7 @@ Using **binary ninja**, found that the executable calls execve("/bin/sh")
 mov     dword [esp], data_80c5348  {"/bin/sh"}
 call    execv
 ```
-## ROP ( Return-oriented programming) ecploit
+## ROP ( Return-oriented programming) exploit
 Googled it, although I've done pwning before but still can't fucking explain anything
 
 **The main idea is to use the existing small fragments in the program based on the stack buffer overflow. ) to change the value of some registers or variables to control the execution flow of the program.**
