@@ -203,3 +203,122 @@ cat /home/user/level2/.pass
 level1@RainFall:~$ su level2
 Password:53a4a712787f40ec66c3c26c1f4b164dcad5552b038bb0addd69bf5bf6fa8e77
 ```
+## level2, a.k.a last level promis juré
+```
+level2@RainFall:~$ ls -l level2 
+-rwsr-s---+ 1 level3 users 5403 Mar  6  2016 level2
+level2@RainFall:~$ file level2 
+level2: setuid setgid ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, BuildID[sha1]=0x0b5bb6cdcf572505f066c42f7be2fde7c53dc8bc, not stripped
+```
+the usual, why do I keep doing this, to see that **not stripped**, pretty sexy
+```
+level2@RainFall:~$ ./level2 
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Segmentation fault (core dumped)
+```
+**binary ninja**, main function calls a function **p**, what kind of fucking lazy name is that
+```
+lea     eax, [ebp-0x4c {var_50}] 
+call    gets
+```
+*offset is 76 again??, dk dc yet*
+
+### there is not system() therefore no shell to jump to, kill me
+*Shellcode refers to the assembly code used to complete a function. The common function is to get the shell of the target system.*
+
+**On the basis of the stack overflow, in order to execute the shellcode, the corresponding binary is required at runtime, and the area where the shellcode is located has executable permissions.**
+
+-- *from* **https://ctf-wiki.github.io/ctf-wiki/pwn/linux/stackoverflow/basic-rop/**
+
+#### crafting shellcode in assembly to l ater inject in executable memory segment, cuz I have no life
+Shiiiiiit, so, **shellcode is machine code that when executed spawns a shell, sometimes.**, not all the time, I didnt need to know this
+
+*experimenting*
+```
+char shellcode[] = "";      
+int
+main (int argc, char **argv)
+{
+        int (*ret)();              /* ret is a function pointer */
+        ret = (int(*)())shellcode; /* ret points to our shellcode */
+                                   /* shellcode is type cast as a function */
+        (int)(*ret)();             /* execute, as a function,        shellcode[] */
+        exit(0);                   /* exit() */
+}
+```
+*C program to test shellcode*
+```
+.global _start
+_start:
+   xor eax, eax
+   movb eax, 1
+   xor ebx, ebx
+   int 0x80
+```
+*simple exit*
+
+**nope, too many syntax errors**
+```
+.global _start
+_start:
+   xor %eax, %eax
+   mov $1, %eax
+   xor %ebx, %ebx
+   int $0x80
+```
+Noice, now assemble and link that shit
+```
+level2@RainFall:/tmp$ as exit.s -o exit.o
+level2@RainFall:/tmp$ ld exit.o -o exit
+level2@RainFall:/tmp$ objdump -d exit
+
+exit:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048054 <_start>:
+ 8048054:       31 c0                   xor    %eax,%eax
+ 8048056:       b8 01 00 00 00          mov    $0x1,%eax
+ 804805b:       31 db                   xor    %ebx,%ebx
+ 804805d:       cd 80                   int    $0x80
+```
+*now those weird bytes are the opcode **31 c0** these*
+
+We make a string out of them
+```
+"\x31\xc0\xb8\x01\x31\xdb\xcd\x80"
+```
+and use it in the global shellcode variable
+```
+char shellcode[] = "\x31\xc0\xb0\x01\x31\xdb\xcd\x80";
+```
+aaaand this shit segfaults
+```
+level2@RainFall:/tmp$ ./main 
+Segmentation fault (core dumped)
+```
+**wtf, kill me**
+
+Went online, ad this is how the main should look like
+```
+char shellcode[] = "\x31\xc0\x40\x89\xc3\xcd\x80";      
+int main (int argc, char **argv)
+{
+        void (*shell)() = (void*) &shellcode;             
+        shell();             
+}
+```
+Still segfaults, so the main wasnt the problem, **the shellcode is in non-executable memory. Try recompiling the program with the -fno-stack-protector and the -z execstack flags enabled.**
+```
+gcc -fno-stack-protector -z execstack
+```
+and
+```
+level2@RainFall:/tmp$ ./a.out 
+level2@RainFall:/tmp$ echo $?
+1
+```
+noice
+### Now the /bin/sh shellcode
