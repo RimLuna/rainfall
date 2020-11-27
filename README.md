@@ -322,9 +322,7 @@ level2@RainFall:/tmp$ echo $?
 ```
 noice
 ### Now the /bin/sh shellcode
-Need a way to call execve with argument "/bin/sh", **pushing it to stack ??**, **11** is the syscall number for execv
-
-*Found this online, I'm a fucking fake*
+*Found this shellcode example, I'm a fucking fake*
 ```
 xor    %eax,%eax
 push   %eax
