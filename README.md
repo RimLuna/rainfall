@@ -483,3 +483,7 @@ Stack level 0, frame at 0xbffff730:
   ebp at 0xbffff728, eip at 0xbffff72c
 ```
 breakpoint at leave instruction inside p function, now eip points to **0xbffff72c**
+
+**this doesnt lead ANYWHERE, kill me**
+
+## BEEN TOLD TO START WITH THE FUCKING BASICS, SO I WILL BE BACK TO FINISH THIS
