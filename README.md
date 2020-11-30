@@ -371,7 +371,7 @@ hooooow, kill me
 
 **binary ninja**, the p function calls gets, then our strin/shellcode is returned in EAX, then puts is called  with that same EAX to print it, THEEEEN strdub is mysteriously called for no fucking reason and **our shellcode is left hanging**
 
-*so need to find a way to call it **a jump or call to the address is register somewhere***
+*so need to find a way to call it **a jump or call to the address in eax register somewhere***
 ```
 level2@RainFall:~$ objdump -d level2 | grep "eax"
 .
